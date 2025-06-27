@@ -11,6 +11,7 @@ import { validateD2CButtons } from "./validateD2CButtons";
 import { setupHooks } from "./setupHooks";
 import { depsInfo } from "./depsInfo";
 import { depsUpdate } from "./depsUpdate";
+import deployLiveDemos from "./deployLiveDemos";
 
 const program = new Command();
 
@@ -75,17 +76,43 @@ program
 program
   .command("generate-npm-lockfiles")
   .description("Generate npm lockfiles to improve install time of templates")
-  .action(() => {
+  .argument(
+    "[path-to-template(s)]",
+    "path to directory containing template(s)",
+    ".",
+  )
+  .action((templateDirectory) => {
     return actionWithSummary("Generate npm lockfiles", () =>
-      generateNpmLockfiles(),
+      generateNpmLockfiles({ templateDirectory }),
     );
   });
 
 program
   .command("lint-npm-lockfiles")
   .description("Lint all templates to ensure npm lockfiles are up to date")
-  .action(() => {
-    return actionWithSummary("Lint npm lockfiles", () => lintNpmLockfiles());
+  .argument(
+    "[path-to-template(s)]",
+    "path to directory containing template(s)",
+    ".",
+  )
+  .action((templateDirectory) => {
+    return actionWithSummary("Lint npm lockfiles", () =>
+      lintNpmLockfiles({ templateDirectory }),
+    );
+  });
+
+program
+  .command("deploy-live-demos")
+  .description("Builds and deploys each template in isolataion")
+  .argument(
+    "[path-to-template(s)]",
+    "path to directory containing template(s)",
+    ".",
+  )
+  .action((templateDirectory) => {
+    return actionWithSummary("Deploy live demos", () =>
+      deployLiveDemos({ templateDirectory }),
+    );
   });
 
 program
