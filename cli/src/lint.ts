@@ -281,7 +281,7 @@ function lintPackageJson(
   }
 
   const pkg = readJson(filePath) as {
-    scripts?: { deploy?: string };
+    scripts?: { deploy?: string; dev?: string };
     cloudflare?: {
       label?: string;
       products?: string[];
@@ -296,6 +296,9 @@ function lintPackageJson(
   // Check deploy script
   if (!pkg.scripts?.deploy) {
     problems.push('"scripts.deploy" must be defined');
+  }
+  if (!pkg.scripts?.dev) {
+    problems.push('"scripts.dev" must be defined');
   }
 
   // Check cloudflare object and its required fields
@@ -317,9 +320,6 @@ function lintPackageJson(
             `"cloudflare.categories" lists "${cat}", but can only include "starter", "storage", and "ai".`,
           );
       });
-    }
-    if (!Array.isArray(pkg.cloudflare.icon_urls)) {
-      problems.push('"cloudflare.icon_urls" must be an array');
     }
     // Ensure a preview image URL is set
     if (!pkg.cloudflare.preview_image_url) {

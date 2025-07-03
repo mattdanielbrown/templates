@@ -33,7 +33,13 @@ export const SEED_REPO_FILES = [
 ];
 
 // these are all the non-template directories we expect to find
-export const ALLOWED_DIRECTORIES = ["cli", "node_modules"];
+export const ALLOWED_DIRECTORIES = [
+  "cli",
+  "node_modules",
+  "playwright-tests",
+  "playwright-report",
+  "test-results",
+];
 
 export function getTemplates(templateDirectory: string): Template[] {
   if (path.basename(templateDirectory).endsWith(TEMPLATE_DIRECTORY_SUFFIX)) {
@@ -220,13 +226,14 @@ export async function commentOnPR({
   if (isDuplicate && noDuplicates) {
     return body;
   }
-  const response = await fetch(
+  const response = await fetchWithRetries(
     `https://api.github.com/repos/cloudflare/templates/issues/${prId}/comments`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${githubToken}`,
+        Connection: "close",
       },
       body: JSON.stringify({
         body,
@@ -246,11 +253,12 @@ export async function isDuplicateComment({
   githubToken,
   body,
 }: CommentOnPRConfig) {
-  const response = await fetch(
+  const response = await fetchWithRetries(
     `https://api.github.com/repos/cloudflare/templates/issues/${prId}/comments`,
     {
       headers: {
         Authorization: `Bearer ${githubToken}`,
+        Connection: "close",
       },
     },
   );
@@ -263,7 +271,14 @@ export async function isDuplicateComment({
   return comments.find((comment) => comment.body === body);
 }
 
-export type PR = { url: string; id: number };
+export type PRState = "open" | "closed" | "all";
+
+export type PR = {
+  url: string;
+  html_url: string;
+  id: number;
+  state: PRState;
+};
 
 export type CreatePRConfig = {
   githubToken: string;
@@ -278,13 +293,14 @@ export async function createPR({
   githubToken,
   ...params
 }: CreatePRConfig): Promise<PR> {
-  const response = await fetch(
+  const response = await fetchWithRetries(
     `https://api.github.com/repos/cloudflare/templates/pulls`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${githubToken}`,
+        Connection: "close",
       },
       body: JSON.stringify(params),
     },
@@ -301,7 +317,7 @@ export type GetPRByBranchConfig = {
   githubToken: string;
   head: string;
   base: string;
-  state: "open" | "closed" | "all";
+  state: PRState;
 };
 
 export async function getPRByBranch({
@@ -316,10 +332,11 @@ export async function getPRByBranch({
   url.searchParams.set("head", `cloudflare:${head}`);
   url.searchParams.set("base", base);
   url.searchParams.set("state", state);
-  const response = await fetch(url, {
+  const response = await fetchWithRetries(url, {
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${githubToken}`,
+      Connection: "close",
     },
   });
   if (!response.ok) {
@@ -332,7 +349,7 @@ export async function getPRByBranch({
 }
 
 export async function getLatestPackageVersion(packageName: string) {
-  const response = await fetch(
+  const response = await fetchWithRetries(
     `https://registry.npmjs.org/${packageName}/latest`,
   );
   if (!response.ok) {
@@ -368,3 +385,18 @@ export function convertToSafeBranchName(str: string) {
     .replace(/^-+|-+$/g, "") // Remove leading or trailing hyphens
     .substring(0, 100); // Limit length
 }
+
+export const fetchWithRetries: typeof fetch = async (...args) => {
+  const maxRetries = 3;
+  for (let numRetries = 0; numRetries < maxRetries; numRetries++) {
+    try {
+      return fetch(...args);
+    } catch (err) {
+      if (numRetries === maxRetries - 1) {
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, numRetries * 5_000));
+    }
+  }
+  throw new Error("Max retries reached."); // this should be unreachable
+};

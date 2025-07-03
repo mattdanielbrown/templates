@@ -18,17 +18,16 @@ In order to introduce a new template to this collection, the following requireme
 
 Cloudflare's Templates Platform extracts `name`, `description`, and a `cloudflare` object directly from each template's `package.json` configuration. This extracted metadata provides content necessary for the template to be rendered in the Cloudflare Dashboard. If the minimally required values are not included in your template, it will fail CI.
 
-| Required?         | Package.json key               | Description                                                                                                   | Example                                                                                                                |
-| ----------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| ✅                | `name`                         | Kebab-case name of your template, should match directory, should end in `-template`.                          | durable-chat-template                                                                                                  |
-| ✅                | `description`                  | Brief, one-line description of the template                                                                   | Chat with other users in real-time using Durable Objects and PartyKit.                                                 |
-|                   | `cloudflare`                   | Object you will nest all cloudflare-specific keys in                                                          |                                                                                                                        |
-| _if publish=true_ | `cloudflare.label`             | Title Case version of name for use in Cloudflare's Dashboard                                                  | Durable Chat App                                                                                                       |
-| _if publish=true_ | `cloudflare.products`          | List 3 or fewer products featured in your example                                                             | ["D1", "Durable Objects"]                                                                                              |
-| ❌                | `cloudflare.categories`        | String(s) that map to filter(s) in the template gallery view                                                  | ["starter", "storage"]                                                                                                 |
-| _if publish=true_ | `cloudflare.icon_urls`         | Link to icons to make visible on the template card                                                            | https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/5ca0ca32-e897-4699-d4c1-6b680512f000/public (default TypeScript logo) |
-| _if publish=true_ | `cloudflare.preview_image_url` | 16:9 aspect screenshot of the template application                                                            | (Link will be provided during PR review)                                                                               |
-| ❌                | `cloudflare.publish`           | Boolean to opt-in for display in the Cloudflare Dashboard - leave out unless requested by the Cloudflare team | (Primarily for internal contributor use)                                                                               |
+| Required?         | Package.json key               | Description                                                                                                   | Example                                                                |
+| ----------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| ✅                | `name`                         | Kebab-case name of your template, should match directory, should end in `-template`.                          | durable-chat-template                                                  |
+| ✅                | `description`                  | Brief, one-line description of the template                                                                   | Chat with other users in real-time using Durable Objects and PartyKit. |
+|                   | `cloudflare`                   | Object you will nest all cloudflare-specific keys in                                                          |                                                                        |
+| _if publish=true_ | `cloudflare.label`             | Title Case version of name for use in Cloudflare's Dashboard                                                  | Durable Chat App                                                       |
+| _if publish=true_ | `cloudflare.products`          | List 3 or fewer products featured in your example                                                             | ["D1", "Durable Objects"]                                              |
+| ❌                | `cloudflare.categories`        | String(s) that map to filter(s) in the template gallery view                                                  | ["starter", "storage"]                                                 |
+| _if publish=true_ | `cloudflare.preview_image_url` | 16:9 aspect screenshot of the template application                                                            | (Link will be provided during PR review)                               |
+| ❌                | `cloudflare.publish`           | Boolean to opt-in for display in the Cloudflare Dashboard - leave out unless requested by the Cloudflare team | (Primarily for internal contributor use)                               |
 
 ### Best Practices: package.json
 
@@ -39,7 +38,6 @@ Cloudflare's Templates Platform extracts `name`, `description`, and a `cloudflar
 - **`cloudflare.preview_image_url`**
   - Can only be provided by a Cloudflare team member. Image files for icons and preview images are stored in the Cloudflare Templates CF account.
   - Preview image should be a screenshot of the application running in-browser.
-- **`cloudflare.icon_urls`** - Icon image should be a png of any logos you want to appear on the templates card (most commonly TypeScript, in which case you can use [this URL](https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/5ca0ca32-e897-4699-d4c1-6b680512f000/public)).
 
 ### Package-lock.json
 
@@ -88,6 +86,58 @@ Today, there is no standard way to derive the required secrets from a project’
 
 Environment variables that do not require users to update them will automatically be included in the new project (e.g. `“ENVIRONMENT”: “staging”`). Variables that require user update (e.g. `“PROJECT_ID”: “[your project id]”`) will need to be configured after initial deployment.
 
+## Playwright E2E Tests
+
+All templates must include Playwright end-to-end tests to ensure critical functionality works correctly. Tests should be minimal smoke tests that verify the most important user flows.
+
+### Setting up Playwright Tests
+
+Playwright is installed
+
+1. **Create test file** in the playwright-tests directory. Your test file should match the directory name of your template.
+
+2. **Basic test structure**:
+
+   ```typescript
+   import { test, expect } from "@playwright/test";
+
+   test("homepage loads correctly", async ({ page }) => {
+     await page.goto("/");
+     await expect(page.locator("h1")).toBeVisible();
+   });
+   ```
+
+### Using Playwright Codegen
+
+Playwright's codegen feature lets you generate tests by clicking through your application:
+
+1. **Start your development server**:
+
+   ```bash
+   pnpm dev
+   ```
+
+2. **Run codegen**:
+
+   ```bash
+   pnpm test:e2e:codegen
+   ```
+
+3. **Record your test**:
+   - A browser window and Playwright Inspector will open
+   - Navigate through your application's critical paths
+   - Click, type, and interact as a user would
+   - Playwright automatically generates test code in the Inspector
+
+4. **Copy generated code** into your test file and refine as needed
+
+### Test Guidelines
+
+- **Keep tests minimal**: Focus on critical user paths only
+- **Test key functionality**: Form submissions, navigation, data loading
+- **Avoid implementation details**: Test what users see, not internal code
+- **Use descriptive test names**: Clearly describe what each test validates
+
 ## Checklist
 
 The above requirements, distilled into checklist form:
@@ -98,11 +148,12 @@ The above requirements, distilled into checklist form:
 - [ ] Designate which section of content should be displayed in the Cloudflare Dashboard by wrapping it in \<!-- dash-content-start --> and \<!-- dash-content-end -->
 - [ ] Include a link to the publicly-accessible deployed preview in your ReadMe
 - [ ] Include the most up-to-date package lock file
+- [ ] Add Playwright E2E tests covering critical user paths
 - [ ] Open a PR against the public repository's main branch
 
 #### Enforced by CI
 
 These checklist items are enforced by our CI/CD pipeline:
 
-- [ ] Include required metadata in package.json (name, description, cloudflare.label, cloudflare.products, cloudflare.icon_urls, cloudflare.preview_image_url)
+- [ ] Include required metadata in package.json (name, description, cloudflare.label, cloudflare.products, cloudflare.preview_image_url)
 - [ ] Include a preview image of the application (16:9 aspect ratio, >=500px width) in your template assets
